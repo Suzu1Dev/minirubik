@@ -9,6 +9,9 @@ input_state: .string "21345671111111"   # @STATE
     .align 4
 pv:     .zero 8                      # p[0..6], one byte each
 fact:   .word 720, 120, 24, 6, 2, 1  # Lehmer weights 6! .. 1!
+# st_p..st_lf must stay contiguous, 48 bytes apart: offsets are hard-coded
+# in the search loop (accessed as offset(P), P = &st_p[d]):
+#   st_p 0, st_o 48, st_mv 96, st_f 144, st_t 192, st_cp 240, st_co 288, st_lf 336
 st_p:   .zero 48         # 12 words
 st_o:   .zero 48
 st_mv:  .zero 48
@@ -146,80 +149,55 @@ bound_loop:
     li   t0, 11
     bgtu s1, t0, fail
 
-    # d = 0
+    # d = 0; P = &st_p[0]
     li   s0, 0
+    la   a6, st_p
 
     # root: st_p[0] = p; st_o[0] = o; st_lf[0] = 3 (no previous face)
     #       st_f[0] = 0; st_t[0] = 0; st_cp[0] = p; st_co[0] = o
-    la   t0, st_p
-    sw   s5, 0(t0)
-    la   t0, st_o
-    sw   s6, 0(t0)
-    la   t0, st_lf
+    sw   s5, 0(a6)          # st_p
+    sw   s6, 48(a6)         # st_o
     li   t1, 3
-    sw   t1, 0(t0)
-    la   t0, st_f
-    sw   zero, 0(t0)
-    la   t0, st_t
-    sw   zero, 0(t0)
-    la   t0, st_cp
-    sw   s5, 0(t0)
-    la   t0, st_co
-    sw   s6, 0(t0)
+    sw   t1, 336(a6)        # st_lf
+    sw   zero, 144(a6)      # st_f
+    sw   zero, 192(a6)      # st_t
+    sw   s5, 240(a6)        # st_cp
+    sw   s6, 288(a6)        # st_co
 
-    # registers in the loop:
+    # registers in the loop (no call anywhere in the loop):
     #   s0 = d, s1 = bound, s2 = m, s3 = cp, s4 = co, s7 = f
-    #   t6 = d * 4 (valid until call heur; no call before that)
+    #   a6 = P = &st_p[d]; other arrays at fixed offsets (see .data)
 dfs_loop:
-    slli t6, s0, 2          # t6 = d * 4
-
     # (1) if (st_t[d] == 3): next face, restart the chain from the parent
-    la   t0, st_t
-    add  t0, t0, t6
-    lw   t1, 0(t0)          # t1 = st_t[d]
+    lw   t1, 192(a6)        # t1 = st_t[d]
     li   t2, 3
     bne  t1, t2, chk_all_done
-    sw   zero, 0(t0)        # st_t[d] = 0
-    la   t0, st_f
-    add  t0, t0, t6
-    lw   t1, 0(t0)
+    sw   zero, 192(a6)      # st_t[d] = 0
+    lw   t1, 144(a6)
     addi t1, t1, 1
-    sw   t1, 0(t0)          # st_f[d]++
-    la   t0, st_p
-    add  t0, t0, t6
-    lw   t1, 0(t0)
-    la   t0, st_cp
-    add  t0, t0, t6
-    sw   t1, 0(t0)          # st_cp[d] = st_p[d]
-    la   t0, st_o
-    add  t0, t0, t6
-    lw   t1, 0(t0)
-    la   t0, st_co
-    add  t0, t0, t6
-    sw   t1, 0(t0)          # st_co[d] = st_o[d]
+    sw   t1, 144(a6)        # st_f[d]++
+    lw   t1, 0(a6)
+    sw   t1, 240(a6)        # st_cp[d] = st_p[d]
+    lw   t1, 48(a6)
+    sw   t1, 288(a6)        # st_co[d] = st_o[d]
 
 chk_all_done:
     # (2) if (st_f[d] == 3): all faces done, go back up
     #     (before same-face check: at the root st_lf = 3)
-    la   t0, st_f
-    add  t0, t0, t6
-    lw   s7, 0(t0)          # s7 = f = st_f[d]
+    lw   s7, 144(a6)        # s7 = f = st_f[d]
     li   t2, 3
     bne  s7, t2, chk_same_face
     beqz s0, next_bound     # d == 0 -> next bound
     addi s0, s0, -1         # d--
+    addi a6, a6, -4         # P = &st_p[d]
     j    dfs_loop
 
 chk_same_face:
     # (3) if (st_f[d] == st_lf[d]): skip the whole face
-    la   t0, st_lf
-    add  t0, t0, t6
-    lw   t1, 0(t0)          # t1 = st_lf[d]
+    lw   t1, 336(a6)        # t1 = st_lf[d]
     bne  s7, t1, do_turn
-    la   t0, st_t
-    add  t0, t0, t6
     li   t1, 3
-    sw   t1, 0(t0)          # st_t[d] = 3
+    sw   t1, 192(a6)        # st_t[d] = 3
     j    dfs_loop
 
 do_turn:
@@ -241,25 +219,19 @@ row_one:
     li   t1, 1458
     add  t4, t4, t1
 row_ready:
-    la   t0, st_cp
-    add  t0, t0, t6
-    lw   t1, 0(t0)          # t1 = st_cp[d]
+    lw   t1, 240(a6)        # t1 = st_cp[d]
     slli t1, t1, 1
     add  t1, t3, t1
     lhu  s3, 0(t1)          # cp = perm_qt[f][st_cp[d]]
-    sw   s3, 0(t0)          # st_cp[d] = cp
-    la   t0, st_co
-    add  t0, t0, t6
-    lw   t1, 0(t0)          # t1 = st_co[d]
+    sw   s3, 240(a6)        # st_cp[d] = cp
+    lw   t1, 288(a6)        # t1 = st_co[d]
     slli t1, t1, 1
     add  t1, t4, t1
     lhu  s4, 0(t1)          # co = orient_qt[f][st_co[d]]
-    sw   s4, 0(t0)          # st_co[d] = co
-    la   t0, st_t
-    add  t0, t0, t6
-    lw   t1, 0(t0)
+    sw   s4, 288(a6)        # st_co[d] = co
+    lw   t1, 192(a6)
     addi t1, t1, 1
-    sw   t1, 0(t0)          # st_t[d]++ (t1 = new t)
+    sw   t1, 192(a6)        # st_t[d]++ (t1 = new t)
 
     # (5) m = 3 * f + t - 1
     slli t2, s7, 1
@@ -283,31 +255,15 @@ h_ready:
     # (7) d++; st_p = cp; st_o = co; st_mv = m; st_lf = f;
     #     st_f = 0; st_t = 0; st_cp = cp; st_co = co
     addi s0, s0, 1
-    slli t1, s0, 2          # new d * 4
-    la   t0, st_p
-    add  t0, t0, t1
-    sw   s3, 0(t0)
-    la   t0, st_o
-    add  t0, t0, t1
-    sw   s4, 0(t0)
-    la   t0, st_mv
-    add  t0, t0, t1
-    sw   s2, 0(t0)
-    la   t0, st_lf
-    add  t0, t0, t1
-    sw   s7, 0(t0)
-    la   t0, st_f
-    add  t0, t0, t1
-    sw   zero, 0(t0)
-    la   t0, st_t
-    add  t0, t0, t1
-    sw   zero, 0(t0)
-    la   t0, st_cp
-    add  t0, t0, t1
-    sw   s3, 0(t0)
-    la   t0, st_co
-    add  t0, t0, t1
-    sw   s4, 0(t0)
+    addi a6, a6, 4          # P = &st_p[d]
+    sw   s3, 0(a6)          # st_p
+    sw   s4, 48(a6)         # st_o
+    sw   s2, 96(a6)         # st_mv
+    sw   s7, 336(a6)        # st_lf
+    sw   zero, 144(a6)      # st_f
+    sw   zero, 192(a6)      # st_t
+    sw   s3, 240(a6)        # st_cp
+    sw   s4, 288(a6)        # st_co
 
     # (8) if (cp == 0 && co == 0) -> found
     or   t0, s3, s4
