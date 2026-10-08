@@ -134,6 +134,13 @@ lehmer_done:
     call heur
     mv   s1, a0
 
+    # table base addresses, kept in s registers for the whole search
+    # (s8 is reused as i in verify_loop, after the search is done)
+    la   s8, perm_qt
+    la   s9, orient_qt
+    la   s10, pdb_p
+    la   s11, pdb_o
+
 bound_loop:
     # if (bound > 11) -> fail
     li   t0, 11
@@ -218,8 +225,8 @@ chk_same_face:
 do_turn:
     # (4) one quarter turn of face f on the running child
     #     row start: t3 = perm_qt[f], t4 = orient_qt[f]
-    la   t3, perm_qt
-    la   t4, orient_qt
+    mv   t3, s8             # perm_qt
+    mv   t4, s9             # orient_qt
     beqz s7, row_ready      # f == 0
     li   t1, 1
     beq  s7, t1, row_one    # f == 1
