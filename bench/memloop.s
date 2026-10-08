@@ -1,5 +1,5 @@
     .text
-    .equ LEN, 0
+    .equ LEN, 0x100000
 main:
     li   t0, 0x10000000 # addr = 0x10000000
     li   t1, LEN        # t1 = 1MiB
