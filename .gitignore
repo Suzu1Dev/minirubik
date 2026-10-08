@@ -4,3 +4,5 @@
 solver
 mini
 .DS_Store
+asm/build-full.s
+bench/results/*.logs/
