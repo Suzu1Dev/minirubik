@@ -1,0 +1,7 @@
+# SMOKE TEST ONLY: input for tools/smoke/varied.s (first digit selects the
+# behaviour, see that file). Not cube states.
+30000000000000
+70000000000000
+90000000000000
+80000000000000
+00000000000000

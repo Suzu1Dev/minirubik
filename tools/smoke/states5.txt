@@ -1,0 +1,10 @@
+# SMOKE TEST ONLY: 5 arbitrary 14-digit strings for exercising
+# scripts/ripes-batch.sh. The smoke programs only echo them back.
+
+12345671111111
+21345671111111|B' R' D2 R' B R B' R D2 B R'
+  62345713133111   trailing text is ignored
+24316572122213,extra
+# comment line in the middle
+
+25713642221111
