@@ -1,0 +1,5 @@
+# c/.gitignore - written with AI assistance (Claude Code); see docs/ai-assistance.md
+*.o
+/gen_tables
+/ida
+/gates
