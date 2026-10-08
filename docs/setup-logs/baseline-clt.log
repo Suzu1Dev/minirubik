@@ -1,0 +1,6 @@
+cc -O3 -std=c99 -Wall -Wextra -Wpedantic solver.c -o solver
+cc -O3 -std=c99 -Wall -Wextra -Wpedantic mini.c -o mini
+./solver --self-test
+3674160 states; diameter 11
+8 solution vectors matched by solver and mini
+invalid input rejected with status 2, unwritable stdout with status 1

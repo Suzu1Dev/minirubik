@@ -1,0 +1,25 @@
+{
+  "session_date_in_Asia_Taipei": "2026-10-05",
+  "purpose": "AI-assisted environment setup checks, not student performance measurements",
+  "upstream_repository": "https://github.com/sysprog21/minirubik",
+  "upstream_commit": "231796cc48868f4ea276f652139b6bebbad0cd02",
+  "compiler": "Apple clang version 21.0.0 (clang-2100.3.33.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+  "baseline_command": "DEVELOPER_DIR=/Library/Developer/CommandLineTools make check",
+  "baseline_exit_code": 0,
+  "ripes_asset_name": "Ripes-v2.2.6-106-g5b8a616-mac-universal2.zip",
+  "ripes_asset_url": "https://github.com/mortbopet/Ripes/releases/download/continuous/Ripes-v2.2.6-106-g5b8a616-mac-universal2.zip",
+  "ripes_download_sha256": "e03ffdb0cc698bb6bcf3b4077e2fcd2e83d6559affa9126285f8de518d67c3bd",
+  "ripes_published_digest": "sha256:e03ffdb0cc698bb6bcf3b4077e2fcd2e83d6559affa9126285f8de518d67c3bd",
+  "ripes_smoke_source": "https://raw.githubusercontent.com/mortbopet/Ripes/5b8a616/examples/assembly/consolePrinting.s",
+  "ripes_smoke_models": [
+    "RV32_ISS",
+    "RV32_5S"
+  ],
+  "ripes_smoke_exit_codes": {
+    "RV32_ISS": 0,
+    "RV32_5S": 0
+  },
+  "ripes_smoke_arguments": "--mode cli --src hw1/.tools/consolePrinting.s -t asm --proc MODEL --timeout 10000",
+  "reference_gcc": "not found on PATH during setup",
+  "fork_and_publication": "not performed"
+}
