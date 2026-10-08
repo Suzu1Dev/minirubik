@@ -268,12 +268,17 @@ row_ready:
     addi s2, t2, -1         # s2 = m
 
     # (6) if (d + 1 + heur(cp, co) > bound) -> skip
-    mv   a0, s3
-    mv   a1, s4
-    call heur
-    add  a0, a0, s0
-    addi a0, a0, 1          # a0 = d + 1 + heur(cp, co)
-    bgtu a0, s1, dfs_loop
+    #     heur inlined: h = max(pdb_p[cp], pdb_o[co]), no call
+    add  t0, s10, s3
+    lbu  t1, 0(t0)          # t1 = pdb_p[cp]
+    add  t0, s11, s4
+    lbu  t2, 0(t0)          # t2 = pdb_o[co]
+    bgeu t1, t2, h_ready
+    mv   t1, t2             # t1 = max
+h_ready:
+    add  t1, t1, s0
+    addi t1, t1, 1          # t1 = d + 1 + h
+    bgtu t1, s1, dfs_loop
 
     # (7) d++; st_p = cp; st_o = co; st_mv = m; st_lf = f;
     #     st_f = 0; st_t = 0; st_cp = cp; st_co = co

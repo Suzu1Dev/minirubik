@@ -1,0 +1,12 @@
+# Quick RV32_ISS --iret checks of asm/solver.s on two states, run by the
+# student with scripts/ripes-run.sh (output pasted verbatim per version).
+# Columns: state,proc,iret,cycles,status,exit_code
+# v2 (per-face chaining), baseline for C2:
+21345671111111,RV32_ISS,22487191,22487191,ok,0
+54721631111111,RV32_ISS,61478872,61478872,ok,0
+# C2 (table base addresses in s8..s11):
+21345671111111,RV32_ISS,22019277,22019277,ok,0
+54721631111111,RV32_ISS,60199296,60199296,ok,0
+# B (heur inlined into the search loop):
+21345671111111,RV32_ISS,19869325,19869325,ok,0
+54721631111111,RV32_ISS,54322614,54322614,ok,0
