@@ -1,0 +1,45 @@
+cc -O2 -std=c99 -Wall -Wextra -Wpedantic -DIDA_STATS -I../tools/oracle gates.o ida_core.o tables_embed.o tables.o oracle_lib.o -o gates
+./gates --asm ../asm/tables.s
+P: parser (ida_parse) against upstream parse_state/rank_state
+       canonical strings rejected: 0, rank mismatches: 0
+  P    every valid state string parses to its upstream rank           ok
+  P    upstream Makefile's invalid inputs (and "") rejected           ok
+       fuzz: 4000000 strings, 171206 valid, 0 disagreements
+  P    random strings: same accept/reject and rank                    ok
+H2: every table fully populated, max and solved entry verified
+  H2   embedded tables (tables_data.h) == regenerated tables          ok
+  H2   perm_qt: 3x5040 entries < 5040, each face a permutation        ok
+  H2   orient_qt: 3x729 entries < 729, each face a permutation        ok
+  H2   perm_qt: a quarter turn moves the solved permutation           ok
+       quarter-turn mismatches: 0 (of 11022480), move mismatches: 0 (of 33067440)
+  H2   tables == upstream quarter_turn, all states x 3 faces          ok
+  H2   ida_apply_move == upstream apply_move, all states x 9 moves    ok
+       pdb_p: max 7, solved entry 0, unreached 0;  pdb_o: max 6, solved entry 0, unreached 0
+  H2   pdb_p and pdb_o fully populated (no 0xFF sentinel)             ok
+  H2   solved entries == 0                                            ok
+  H2   PDB maxima <= 11                                               ok
+  H2   PDBs are exact abstract distances (BFS labelling)              ok
+       asm tables file: ../asm/tables.s
+  H2   asm tables file == embedded tables, after .align 2             ok
+H1: admissibility h(s) <= d(s) over all 3674160 states
+       h = pdb_p[p]                 violations 0, states with h == d 15594
+       h = pdb_o[o]                 violations 0, states with h == d 3621
+       h = max(pdb_p[p], pdb_o[o])  violations 0, states with h == d 17108
+  H1   oracle distance available for every state                      ok
+  H1   no state with h > d (all three heuristics)                     ok
+H3: ida_solve on every state, length == exact distance (12 processes)
+       states 3674160, wrong length 0, path not solving (core) 0, (upstream) 0, search failures 0
+       nodes expanded: total 9914160189, mean 2698.3, max 106636 (state 54721631111111)
+       nodes generated: total 59422039981
+       max expanded by distance: 0:0 1:2 2:3 3:6 4:24 5:106 6:242 7:656 8:2460 9:9264 10:41721 11:106636
+       wall-clock 24.44 s
+  H3   all worker processes reported                                  ok
+  H3   every state searched                                           ok
+  H3   returned length == oracle distance for every state             ok
+  H3   every returned path solves its state (core and upstream)       ok
+H4: packed accessors agree with an unpacked reference
+       no packed accessor exists: pdb_p and pdb_o hold one byte per entry,
+       so H4 is vacuous. Trivial check of byte reads at even and odd indices:
+       2885 even and 2884 odd indices compared, 0 mismatches
+  H4   pdb byte reads == generator arrays (even and odd)              ok
+gates: PASS
