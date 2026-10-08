@@ -12,11 +12,7 @@ fact:   .word 720, 120, 24, 6, 2, 1  # Lehmer weights 6! .. 1!
 st_p:   .zero 48         # 12 words
 st_o:   .zero 48
 st_mv:  .zero 48
-st_f:   .zero 48         # face being tried (0..2, 3 = all done)
-st_t:   .zero 48         # quarter turns done on that face (0..3)
-st_cp:  .zero 48         # running child of the chain
-st_co:  .zero 48
-st_lf:  .zero 48         # face used to reach this level (3 = none)
+st_nx:  .zero 48
 path:   .zero 12         # 11 moves (bytes)
 msg_pass: .string "PASS\n"
 msg_fail: .string "FAIL\n"
@@ -142,125 +138,62 @@ bound_loop:
     # d = 0
     li   s0, 0
 
-    # root: st_p[0] = p; st_o[0] = o; st_lf[0] = 3 (no previous face)
-    #       st_f[0] = 0; st_t[0] = 0; st_cp[0] = p; st_co[0] = o
+    # st_p[0] = p; st_o[0] = o; st_nx[0] = 0
     la   t0, st_p
     sw   s5, 0(t0)
     la   t0, st_o
     sw   s6, 0(t0)
-    la   t0, st_lf
-    li   t1, 3
-    sw   t1, 0(t0)
-    la   t0, st_f
+    la   t0, st_nx
     sw   zero, 0(t0)
-    la   t0, st_t
-    sw   zero, 0(t0)
-    la   t0, st_cp
-    sw   s5, 0(t0)
-    la   t0, st_co
-    sw   s6, 0(t0)
 
-    # registers in the loop:
-    #   s0 = d, s1 = bound, s2 = m, s3 = cp, s4 = co, s7 = f
-    #   t6 = d * 4 (valid until call heur; no call before that)
 dfs_loop:
-    slli t6, s0, 2          # t6 = d * 4
+    # (a) if (st_nx[d] == 9)
+    la   t0, st_nx
+    slli t1, s0, 2          # d * 4
+    add  t0, t0, t1         # t0 = &st_nx[d] (reused in (b))
+    lw   t2, 0(t0)          # t2 = st_nx[d]
+    li   t3, 9
+    bne  t2, t3, try_move
 
-    # (1) if (st_t[d] == 3): next face, restart the chain from the parent
-    la   t0, st_t
-    add  t0, t0, t6
-    lw   t1, 0(t0)          # t1 = st_t[d]
-    li   t2, 3
-    bne  t1, t2, chk_all_done
-    sw   zero, 0(t0)        # st_t[d] = 0
-    la   t0, st_f
-    add  t0, t0, t6
-    lw   t1, 0(t0)
-    addi t1, t1, 1
-    sw   t1, 0(t0)          # st_f[d]++
+    #     if (d == 0) -> next bound
+    beqz s0, next_bound
+    #     d--
+    addi s0, s0, -1
+    j    dfs_loop
+
+try_move:
+    # (b) m = st_nx[d]; st_nx[d]++
+    mv   s2, t2             # m
+    addi t2, t2, 1
+    sw   t2, 0(t0)          # t0 is still &st_nx[d], no call in between
+
+    # (c) if (d > 0 && face(m) == face(st_mv[d])) -> skip
+    beqz s0, no_prune       # d == 0: nothing to prune
+    la   t0, st_mv
+    slli t1, s0, 2          # d * 4
+    add  t0, t0, t1
+    lw   a0, 0(t0)          # a0 = st_mv[d]
+    call move_face
+    mv   s7, a0             # s7 = face(st_mv[d]), survives the next call
+    mv   a0, s2
+    call move_face          # a0 = face(m)
+    beq  a0, s7, dfs_loop   # same face -> skip this move
+
+no_prune:
+    # (d) (cp, co) = apply_move(st_p[d], st_o[d], m)
+    slli t1, s0, 2          # d * 4 (recompute: calls above clobber t regs)
     la   t0, st_p
-    add  t0, t0, t6
-    lw   t1, 0(t0)
-    la   t0, st_cp
-    add  t0, t0, t6
-    sw   t1, 0(t0)          # st_cp[d] = st_p[d]
+    add  t0, t0, t1
+    lw   a0, 0(t0)          # a0 = st_p[d]
     la   t0, st_o
-    add  t0, t0, t6
-    lw   t1, 0(t0)
-    la   t0, st_co
-    add  t0, t0, t6
-    sw   t1, 0(t0)          # st_co[d] = st_o[d]
+    add  t0, t0, t1
+    lw   a1, 0(t0)          # a1 = st_o[d]
+    mv   a2, s2             # a2 = m
+    call ida_apply_move
+    mv   s3, a0             # cp
+    mv   s4, a1             # co
 
-chk_all_done:
-    # (2) if (st_f[d] == 3): all faces done, go back up
-    #     (before same-face check: at the root st_lf = 3)
-    la   t0, st_f
-    add  t0, t0, t6
-    lw   s7, 0(t0)          # s7 = f = st_f[d]
-    li   t2, 3
-    bne  s7, t2, chk_same_face
-    beqz s0, next_bound     # d == 0 -> next bound
-    addi s0, s0, -1         # d--
-    j    dfs_loop
-
-chk_same_face:
-    # (3) if (st_f[d] == st_lf[d]): skip the whole face
-    la   t0, st_lf
-    add  t0, t0, t6
-    lw   t1, 0(t0)          # t1 = st_lf[d]
-    bne  s7, t1, do_turn
-    la   t0, st_t
-    add  t0, t0, t6
-    li   t1, 3
-    sw   t1, 0(t0)          # st_t[d] = 3
-    j    dfs_loop
-
-do_turn:
-    # (4) one quarter turn of face f on the running child
-    #     row start: t3 = perm_qt[f], t4 = orient_qt[f]
-    la   t3, perm_qt
-    la   t4, orient_qt
-    beqz s7, row_ready      # f == 0
-    li   t1, 1
-    beq  s7, t1, row_one    # f == 1
-    li   t1, 20160          # f == 2
-    add  t3, t3, t1
-    li   t1, 2916
-    add  t4, t4, t1
-    j    row_ready
-row_one:
-    li   t1, 10080
-    add  t3, t3, t1
-    li   t1, 1458
-    add  t4, t4, t1
-row_ready:
-    la   t0, st_cp
-    add  t0, t0, t6
-    lw   t1, 0(t0)          # t1 = st_cp[d]
-    slli t1, t1, 1
-    add  t1, t3, t1
-    lhu  s3, 0(t1)          # cp = perm_qt[f][st_cp[d]]
-    sw   s3, 0(t0)          # st_cp[d] = cp
-    la   t0, st_co
-    add  t0, t0, t6
-    lw   t1, 0(t0)          # t1 = st_co[d]
-    slli t1, t1, 1
-    add  t1, t4, t1
-    lhu  s4, 0(t1)          # co = orient_qt[f][st_co[d]]
-    sw   s4, 0(t0)          # st_co[d] = co
-    la   t0, st_t
-    add  t0, t0, t6
-    lw   t1, 0(t0)
-    addi t1, t1, 1
-    sw   t1, 0(t0)          # st_t[d]++ (t1 = new t)
-
-    # (5) m = 3 * f + t - 1
-    slli t2, s7, 1
-    add  t2, t2, s7         # 3 * f
-    add  t2, t2, t1
-    addi s2, t2, -1         # s2 = m
-
-    # (6) if (d + 1 + heur(cp, co) > bound) -> skip
+    # (e) if (d + 1 + heur(cp, co) > bound) -> skip
     mv   a0, s3
     mv   a1, s4
     call heur
@@ -268,10 +201,9 @@ row_ready:
     addi a0, a0, 1          # a0 = d + 1 + heur(cp, co)
     bgtu a0, s1, dfs_loop
 
-    # (7) d++; st_p = cp; st_o = co; st_mv = m; st_lf = f;
-    #     st_f = 0; st_t = 0; st_cp = cp; st_co = co
+    # (f) d++; st_p[d] = cp; st_o[d] = co; st_mv[d] = m; st_nx[d] = 0
     addi s0, s0, 1
-    slli t1, s0, 2          # new d * 4
+    slli t1, s0, 2          # new d * 4, shared by all four arrays
     la   t0, st_p
     add  t0, t0, t1
     sw   s3, 0(t0)
@@ -281,23 +213,11 @@ row_ready:
     la   t0, st_mv
     add  t0, t0, t1
     sw   s2, 0(t0)
-    la   t0, st_lf
-    add  t0, t0, t1
-    sw   s7, 0(t0)
-    la   t0, st_f
+    la   t0, st_nx
     add  t0, t0, t1
     sw   zero, 0(t0)
-    la   t0, st_t
-    add  t0, t0, t1
-    sw   zero, 0(t0)
-    la   t0, st_cp
-    add  t0, t0, t1
-    sw   s3, 0(t0)
-    la   t0, st_co
-    add  t0, t0, t1
-    sw   s4, 0(t0)
 
-    # (8) if (cp == 0 && co == 0) -> found
+    # (g) if (cp == 0 && co == 0) -> found
     or   t0, s3, s4
     beqz t0, found
     j    dfs_loop
@@ -393,6 +313,21 @@ heur:
     bgeu a0, t1, ida_heur_return
     mv a0, t1
 ida_heur_return:
+    ret
+
+# move_face: a0 = move (0..8) -> a0 = face (0 = R, 1 = B, 2 = D)
+move_face:
+    li   t0, 6
+    bgeu a0, t0, face_two
+    li   t0, 3
+    bgeu a0, t0, face_one
+    li   a0, 0
+    ret
+face_one:
+    li   a0, 1
+    ret
+face_two:
+    li   a0, 2
     ret
 
 # ida_apply_move: a0 = p_rank, a1 = o_rank, a2 = move (0..8)
