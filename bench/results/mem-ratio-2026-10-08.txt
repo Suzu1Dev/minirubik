@@ -1,0 +1,40 @@
+# Raw output of the host-bytes-per-guest-byte measurement (Section 2.5),
+# run by the student on 2026-10-08 ~15:20 GMT+8, pasted verbatim.
+# Command (from the repository root):
+#   R="../.tools/Ripes-v2.2.6-106-g5b8a616-mac-universal2.app/Contents/MacOS/Ripes"; for len in 4 0x100000 0x200000 0x400000; do sed "s/^\( *\.equ LEN,\).*/\1 $len/" bench/memloop.s > "/tmp/mem_$len.s"; for i in 1 2 3; do echo "LEN=$len run=$i"; /usr/bin/time -l "$R" --mode cli --src "/tmp/mem_$len.s" -t asm --proc RV32_ISS 2>&1 | grep -E "footprint|resident"; done; done
+LEN=4 run=1
+            75120640  maximum resident set size
+            12944272  peak memory footprint
+LEN=4 run=2
+            75137024  maximum resident set size
+            12960656  peak memory footprint
+LEN=4 run=3
+            75153408  maximum resident set size
+            12714896  peak memory footprint
+LEN=0x100000 run=1
+           133988352  maximum resident set size
+            73171904  peak memory footprint
+LEN=0x100000 run=2
+           134021120  maximum resident set size
+            73204672  peak memory footprint
+LEN=0x100000 run=3
+           134004736  maximum resident set size
+            73122752  peak memory footprint
+LEN=0x200000 run=1
+           193839104  maximum resident set size
+           133202904  peak memory footprint
+LEN=0x200000 run=2
+           193871872  maximum resident set size
+           133235672  peak memory footprint
+LEN=0x200000 run=3
+           193757184  maximum resident set size
+           133120984  peak memory footprint
+LEN=0x400000 run=1
+           314081280  maximum resident set size
+           253314104  peak memory footprint
+LEN=0x400000 run=2
+           313835520  maximum resident set size
+           253281336  peak memory footprint
+LEN=0x400000 run=3
+           313884672  maximum resident set size
+           253314128  peak memory footprint
