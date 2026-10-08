@@ -106,3 +106,9 @@ Issues reported by the last independent review and fixed after each was reproduc
 Output status: nothing committed or pushed. The student should review `c/` and `asm/tables.s` before committing them.
 
 Student review and decisions: pending.
+
+## October 8 2026 Student rewrite of the C search core
+
+To keep the search core in their own hands, the student asked to replace the tool-written `c/ida_core.c`, which remains in git history at commit `f932828`, and agreed not to read it while writing. The tool removed it and left a compiling skeleton: function signatures from `ida_core.h`, stubs, and the four stack-array declarations. The student then wrote every function body (`ida_parse`, `ida_apply_move`, `ida_apply_path`, `heur`, `move_face`, `ida_solve`) step by step.
+
+For each step the tool explained what the function must do and the RV32I-relevant constraints (no `/` or `%`, no multiply by a variable), and gave a skeleton for `ida_parse` and `ida_solve` with the key conditions and expressions left blank. It then reviewed each draft and named the bugs without rewriting the code: `- 1` instead of `- '1'`, the duplicate check `if (seen)`, a missing sum update, the use of `%`, a missing last element in the Lehmer count, wrong factorial weights, a call to a nonexistent `max`, an incomplete same-face condition, an inverted solved test, `i = d` in a loop condition, and an off-by-one path index. The tool also ran `c/gates --skip-h3` and `make -C c check` on the student's code to show the results. The full `make -C c gates` run (gates PASS, H3 over all 3,674,160 states) was run by the student.
