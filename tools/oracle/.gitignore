@@ -1,0 +1,3 @@
+# Build products of tools/oracle/Makefile
+/oracle
+*.o
